@@ -1,125 +1,60 @@
-import ctypes
 import os
-import sys
+import random
+import string
+import customtkinter as ctk
 import time
-import winreg
-import subprocess
-import msvcrt  
+from datetime import datetime
 
+LOG_FILE = "hwid_spoofer.log"
 
-def run_as_admin():
-    if not is_admin():
-        script = sys.argv[0]  
-        params = " ".join(sys.argv[1:])  
-        command = f'runas /user:Administrator "python {script} {params}"' 
-        os.system(command)  
-        sys.exit()  
+# Fonction pour générer un ID aléatoire
+def generate_random_id():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
 
+# Fonction pour ajouter des logs
+def log_action(action):
+    with open(LOG_FILE, "a") as log:
+        log.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {action}\n")
 
-def is_admin():
-    try:
-        return os.geteuid() == 0  
-    except AttributeError:
-        return os.name == 'nt' and ctypes.windll.shell32.IsUserAnAdmin() != 0
+# Fonction pour animer le label de statut
+def animate_status(text, emoji, color):
+    for i in range(3):
+        status_label.configure(text=f"{text}{'.' * i} {emoji}", text_color=color)
+        root.update()
+        time.sleep(0.3)
+    status_label.configure(text=f"{text} {emoji}")
 
+# Fonction de spoof HWID
+def spoof_hwid():
+    new_hwid = generate_random_id()
+    os.system(f'reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography /v MachineGuid /t REG_SZ /d "{new_hwid}" /f')
+    log_action(f"HWID changé en {new_hwid}")
+    animate_status("HWID modifié ! Redémarrage recommandé", "✅", "#00FF00")
 
-def print_green(text):
-    print(f"\033[92m{text}\033[0m")
+# Fonction de reset HWID
+def reset_hwid():
+    os.system(r'reg delete HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography /v MachineGuid /f')
+    log_action("HWID réinitialisé !")
+    animate_status("HWID réinitialisé ! Redémarrage nécessaire", "⚠️", "#FFA500")
 
+# Interface CustomTkinter
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
-ascii_art = r"""
-.../||   .|'''''| .|''''|, '||\   ||` '\\  //`               
- // ||   || .     ||    ||  ||\\  ||    \\//                  
-//..||.. || |''|| ||    ||  || \\ ||     ||                   
-    ||   ||    || ||    ||  ||  \\||     ||                   
-    ||   `|....|' `|....|' .||   \||.   .||.                  
-                                                             
-.|'''|  '||'''|, .|''''|, .|''''|, '||''''| '||''''| '||'''|,
-||       ||   || ||    || ||    ||  ||  .    ||   .   ||   ||
-`|'''|,  ||...|' ||    || ||    ||  ||''|    ||'''|   ||...|'
- .   ||  ||      ||    || ||    ||  ||       ||       || \\  
- |...|' .||      `|....|' `|....|' .||.     .||....| .||  \\.
-                                                             
-'||  ||` '||      ||` |''||''| '||'''|.                      
- ||  ||   ||      ||     ||     ||   ||                      
- ||''||   ||  /\  ||     ||     ||   ||                      
- ||  ||    \\//\\//      ||     ||   ||                      
-.||  ||.    \/  \/    |..||..| .||...|'                      
-"""
+root = ctk.CTk()
+root.title("HWID Spoofer")
+root.geometry("400x300")
 
+label = ctk.CTkLabel(root, text="💻 HWID Spoofer", font=("Arial", 18))
+label.pack(pady=15)
 
-def print_fading_text(text, delay=0.02):
-    lines = text.split("\n")
-    for line in lines:
-        print_green(line)
-        time.sleep(delay)  
+spoof_button = ctk.CTkButton(root, text="🚀 Spoof HWID", fg_color="#1E90FF", command=spoof_hwid)
+spoof_button.pack(pady=10)
 
+reset_button = ctk.CTkButton(root, text="🔄 Reset HWID", fg_color="#FF4500", command=reset_hwid)
+reset_button.pack(pady=10)
 
-def wait_for_keypress():
-    print("\n🔹 Appuyez sur une touche pour continuer...")
-    msvcrt.getch()  
+status_label = ctk.CTkLabel(root, text="", font=("Arial", 12))
+status_label.pack(pady=20)
 
-
-print_fading_text(ascii_art, delay=0.02)
-wait_for_keypress()
-
-
-print("\n🔐 Entrez le mot de passe pour utiliser le Spoofer: ", end="", flush=True)
-password = ""
-correct_password = "HWIDSPOOF"
-
-while True:
-    char = msvcrt.getch()
-    
-    if char == b"\r":  
-        break
-    elif char == b"\b":  
-        password = password[:-1]
-        print("\b \b", end="", flush=True)  
-    else:
-        password += char.decode("ascii")  
-        print("*", end="", flush=True)  
-
-if password != correct_password:
-    print("\n❌ Mot de passe incorrect. Fermeture du programme.")
-    exit()
-
-print("\n✅ Mot de passe correct ! Lancement du spoofer...")
-wait_for_keypress()
-
-
-def spoof_machine_guid():
-    key = r"SOFTWARE\\Microsoft\\Cryptography"
-    try:
-        reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(reg, "MachineGuid", 0, winreg.REG_SZ, "1337-GUID-7364-ZKFJA")
-        winreg.CloseKey(reg)
-        print_green("[+] Machine GUID spoofed avec succès !")
-    except Exception as e:
-        print(f"[-] Erreur : {e}")
-
-
-def spoof_mac_address(interface="Ethernet"):
-    new_mac = "00:13:25:36:48:50"
-    try:
-        subprocess.run(f'netsh interface set interface "{interface}" admin=disable', shell=True)
-        subprocess.run(f'reg add HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\"4D36E972-E325-11CE-BFC1-08002BE10318"\\0001 /v NetworkAddress /t REG_SZ /d {new_mac} /f', shell=True)
-        subprocess.run(f'netsh interface set interface "{interface}" admin=enable', shell=True)
-        print_green("[+] Adresse MAC spoofed avec succès !")
-    except Exception as e:
-        print(f"[-] Erreur : {e}")
-
-
-print_green("🔄 Spoofing en cours...")
-
-spoof_machine_guid()
-
-
-spoof_mac_address()
-
-
-print_green("✅ Spoofing terminé ! Redémarrez votre PC pour appliquer les changements.")
-wait_for_keypress()
-
-
-run_as_admin()
+root.mainloop()
