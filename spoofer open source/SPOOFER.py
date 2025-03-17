@@ -89,7 +89,7 @@ wait_for_keypress()
 
 
 def spoof_machine_guid():
-    key = r"SOFTWARE\Microsoft\Cryptography"
+    key = r"SOFTWARE\\Microsoft\\Cryptography"
     try:
         reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key, 0, winreg.KEY_SET_VALUE)
         winreg.SetValueEx(reg, "MachineGuid", 0, winreg.REG_SZ, "1337-GUID-7364-ZKFJA")
@@ -111,7 +111,6 @@ def spoof_mac_address(interface="Ethernet"):
 
 
 print_green("🔄 Spoofing en cours...")
-wait_for_keypress()
 
 spoof_machine_guid()
 
