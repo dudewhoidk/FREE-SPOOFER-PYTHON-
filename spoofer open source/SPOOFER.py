@@ -92,7 +92,7 @@ def spoof_machine_guid():
     key = r"SOFTWARE\Microsoft\Cryptography"
     try:
         reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(reg, "MachineGuid", 0, winreg.REG_SZ, "FAKE-GUID-12345-ABCDE")
+        winreg.SetValueEx(reg, "MachineGuid", 0, winreg.REG_SZ, "1337-GUID-7364-ZKFJA")
         winreg.CloseKey(reg)
         print_green("[+] Machine GUID spoofed avec succès !")
     except Exception as e:
@@ -100,7 +100,7 @@ def spoof_machine_guid():
 
 
 def spoof_mac_address(interface="Ethernet"):
-    new_mac = "00:11:22:33:44:55"
+    new_mac = "00:13:25:36:48:50"
     try:
         subprocess.run(f'netsh interface set interface "{interface}" admin=disable', shell=True)
         subprocess.run(f'reg add HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\"4D36E972-E325-11CE-BFC1-08002BE10318"\\0001 /v NetworkAddress /t REG_SZ /d {new_mac} /f', shell=True)
